@@ -30,7 +30,8 @@ export default function InfiniteImageGrid() {
   const calculateGridSize = useCallback(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth
-      const columns = Math.floor(containerWidth / (baseImageWidth + 20))
+      const isMobile = containerWidth <= 768 // Adjust this breakpoint as needed
+      const columns = isMobile ? 3 : Math.floor(containerWidth / (baseImageWidth + 20))
       const imageWidth = (containerWidth - (columns + 1) * 20) / columns
       const imageHeight = imageWidth / aspectRatio
       const rows = Math.ceil(imageList.length / columns)
@@ -39,18 +40,19 @@ export default function InfiniteImageGrid() {
         height: rows * (imageHeight + 20),
         columns,
         imageWidth,
-        imageHeight
+        imageHeight,
+        isMobile
       }
     }
-    return { width: 0, height: 0, columns: 0, imageWidth: 0, imageHeight: 0 }
+    return { width: 0, height: 0, columns: 0, imageWidth: 0, imageHeight: 0, isMobile: false }
   }, [])
 
   const loadAllItems = useCallback(() => {
-    const { columns, imageWidth, imageHeight } = calculateGridSize()
+    const { columns, imageWidth, imageHeight, isMobile } = calculateGridSize()
     const newItems: GridItem[] = imageList.map((img, i) => ({
       id: i.toString(),
-      x: (i % columns) * (imageWidth + 20) + 10,
-      y: Math.floor(i / columns) * (imageHeight + 20) + 10,
+      x: (i % columns) * (imageWidth + (isMobile ? 10 : 20)) + (isMobile ? 5 : 10),
+      y: Math.floor(i / columns) * (imageHeight + (isMobile ? 10 : 20)) + (isMobile ? 5 : 10),
       width: imageWidth,
       height: imageHeight,
       img: `/productImages/${img}`,
