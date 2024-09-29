@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { Move, Lock } from 'lucide-react'
 import imageList from '../src/utils/imageList.json'
 
 interface GridItem {
@@ -24,6 +25,7 @@ export default function InfiniteImageGrid() {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isMobile, setIsMobile] = useState(false)
+  const [isLocked, setIsLocked] = useState(false)
 
   const aspectRatio = 1600 / 2000
   const baseImageWidth = 200
@@ -32,7 +34,7 @@ export default function InfiniteImageGrid() {
   const calculateGridSize = useCallback(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth
-      const isMobile = containerWidth <= 768 // Adjust this breakpoint as needed
+      const isMobile = containerWidth <= 768
       setIsMobile(isMobile)
       const columns = isMobile ? 3 : Math.floor(containerWidth / (baseImageWidth + 20))
       const imageWidth = (containerWidth - (columns + 1) * 20) / columns
@@ -89,22 +91,28 @@ export default function InfiniteImageGrid() {
     )
   }
 
-  const handleMouseDown = (e: React.MouseEvent, itemId: string) => {
+  const handleInteractionStart = (e: React.MouseEvent | React.TouchEvent, itemId: string) => {
+    if (isMobile && isLocked) return
+
     const item = items.find(i => i.id === itemId)
     if (item) {
       setDraggedItem(itemId)
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
       setDragOffset({
-        x: e.clientX - item.x,
-        y: e.clientY - item.y
+        x: clientX - item.x,
+        y: clientY - item.y
       })
       bringToFront(itemId)
     }
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleInteractionMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (draggedItem) {
-      const newX = e.clientX - dragOffset.x
-      const newY = e.clientY - dragOffset.y
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+      const newX = clientX - dragOffset.x
+      const newY = clientY - dragOffset.y
       setItems(prevItems =>
         prevItems.map(item =>
           item.id === draggedItem
@@ -115,41 +123,12 @@ export default function InfiniteImageGrid() {
     }
   }
 
-  const handleMouseUp = () => {
+  const handleInteractionEnd = () => {
     setDraggedItem(null)
   }
 
-  const handleTouchStart = (e: React.TouchEvent, itemId: string) => {
-    const item = items.find(i => i.id === itemId)
-    if (item) {
-      setDraggedItem(itemId)
-      const touch = e.touches[0]
-      setDragOffset({
-        x: touch.clientX - item.x,
-        y: touch.clientY - item.y
-      })
-      bringToFront(itemId)
-    }
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (draggedItem) {
-      e.preventDefault() // Prevent scrolling while dragging
-      const touch = e.touches[0]
-      const newX = touch.clientX - dragOffset.x
-      const newY = touch.clientY - dragOffset.y
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === draggedItem
-            ? { ...item, x: newX, y: newY }
-            : item
-        )
-      )
-    }
-  }
-
-  const handleTouchEnd = () => {
-    setDraggedItem(null)
+  const toggleLock = () => {
+    setIsLocked(!isLocked)
   }
 
   if (error) {
@@ -168,18 +147,28 @@ export default function InfiniteImageGrid() {
             className="mb-2"
           />
         </Link>
-        <h1 className="text-sm text-center text-black-800">
-          Drag and reposition to create your fit.
+        <h1 className="text-sm text-center text-black-800 px-4">
+          {isMobile
+            ? "Drag and reposition to create your fit. Unlock to reposition and lock to scroll."
+            : "Drag and reposition to create your fit."}
         </h1>
       </header>
+      {isMobile && (
+        <button
+          onClick={toggleLock}
+          className="fixed bottom-4 right-4 z-50 bg-blue-500 text-white p-2 rounded-full shadow-lg"
+        >
+          {isLocked ? <Lock size={24} /> : <Move size={24} />}
+        </button>
+      )}
       <div 
         ref={containerRef} 
-        className="flex-grow p-4 overflow-auto touch-none" 
+        className={`flex-grow p-4 overflow-auto ${!isLocked ? 'touch-none' : ''}`}
         style={{ width: '100vw', height: 'calc(100vh - 123px)' }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onMouseMove={handleInteractionMove}
+        onMouseUp={handleInteractionEnd}
+        onTouchMove={handleInteractionMove}
+        onTouchEnd={handleInteractionEnd}
       >
         <div style={{ position: 'relative', width: containerSize.width, height: containerSize.height }}>
           {items.map((item) => (
@@ -193,8 +182,8 @@ export default function InfiniteImageGrid() {
                 height: item.height,
                 zIndex: item.zIndex
               }}
-              onMouseDown={(e) => handleMouseDown(e, item.id)}
-              onTouchStart={(e) => handleTouchStart(e, item.id)}
+              onMouseDown={(e) => handleInteractionStart(e, item.id)}
+              onTouchStart={(e) => handleInteractionStart(e, item.id)}
             >
               <Image
                 src={item.img}
