@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import imageList from '../src/utils/imageList.json'
 
 interface GridItem {
@@ -22,6 +23,7 @@ export default function InfiniteImageGrid() {
   const [maxZIndex, setMaxZIndex] = useState(0)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [isMobile, setIsMobile] = useState(false)
 
   const aspectRatio = 1600 / 2000
   const baseImageWidth = 200
@@ -31,6 +33,7 @@ export default function InfiniteImageGrid() {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth
       const isMobile = containerWidth <= 768 // Adjust this breakpoint as needed
+      setIsMobile(isMobile)
       const columns = isMobile ? 3 : Math.floor(containerWidth / (baseImageWidth + 20))
       const imageWidth = (containerWidth - (columns + 1) * 20) / columns
       const imageHeight = imageWidth / aspectRatio
@@ -131,6 +134,7 @@ export default function InfiniteImageGrid() {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (draggedItem) {
+      e.preventDefault() // Prevent scrolling while dragging
       const touch = e.touches[0]
       const newX = touch.clientX - dragOffset.x
       const newY = touch.clientY - dragOffset.y
@@ -155,20 +159,22 @@ export default function InfiniteImageGrid() {
   return (
     <div className="flex flex-col min-h-screen bg-white-100">
       <header className="bg-white py-6 flex flex-col items-center">
-        <Image
-          src="/logos/logo.png"
-          alt="Logo"
-          width={100}
-          height={100}
-          className="mb-2"
-        />
+        <Link href="https://www.mind-bowling.com/" target="_blank" rel="noopener noreferrer">
+          <Image
+            src="/logos/logo.png"
+            alt="Logo"
+            width={100}
+            height={100}
+            className="mb-2"
+          />
+        </Link>
         <h1 className="text-sm text-center text-black-800">
           Drag and reposition to create your fit.
         </h1>
       </header>
       <div 
         ref={containerRef} 
-        className="flex-grow p-4 overflow-auto" 
+        className="flex-grow p-4 overflow-auto touch-none" 
         style={{ width: '100vw', height: 'calc(100vh - 123px)' }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
